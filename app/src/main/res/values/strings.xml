@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Regulador de Foco</string>
+    <string name="tile_label">Óculos de tela</string>
+    <string name="service_description">Aplica na tela inteira o ajuste calibrado pelo teste de visão: zoom em tudo, acompanhando onde você digita, e o filtro para antes de dormir. Não lê nem guarda o conteúdo das telas.</string>
+</resources>
