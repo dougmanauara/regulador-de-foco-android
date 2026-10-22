@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Regulador de Foco</string>
     <string name="tile_label">Óculos de tela</string>
-    <string name="service_description">Aplica na tela inteira o ajuste calibrado pelo teste de visão: zoom em tudo, acompanhando onde você digita, e o filtro para antes de dormir. Não lê nem guarda o conteúdo das telas.</string>
+    <string name="service_description">Aplica na tela inteira a correção de foco calibrada pelo teste de visão, e o filtro para antes de dormir. Para isso o app tira fotos da tela quando ela para e mostra a versão corrigida por cima. As fotos ficam só na memória do celular: nada é salvo nem enviado.</string>
 </resources>

@@ -1,46 +1,57 @@
 # Regulador de Foco (Android)
 
-Um "óculos" para a tela do celular, para quem enxerga com dificuldade: sem óculos à mão, com a vista cansada ou antes de dormir. Um teste rápido mede como cada olho enxerga, e o app aumenta letras e tela inteira, em qualquer app, na medida certa para a pessoa.
+Um "óculos" para a tela do celular, para quem enxerga embaçado: sem óculos à mão, com a vista cansada ou antes de dormir. O teste mede o embaçado de cada olho, e o app **corrige o foco da imagem da tela inteira**, em qualquer app, no grau escolhido pela pessoa.
 
-O app não corrige a visão nem substitui a consulta com oftalmologista. O embaçado acontece dentro do olho, e nenhum programa muda o foco da luz. O que dá para fazer é deixar tudo grande o bastante para não forçar a vista, e é isso que o app faz.
+## Como a correção de foco funciona
 
-## O que o app faz
+O olho embaçado espalha cada ponto da tela num pequeno disco. O app calcula uma imagem "pré-corrigida": quando o olho a borra, o resultado fica mais perto do texto nítido. Isso é feito na placa de vídeo do celular, em 18 passadas (método de Landweber projetado), respeitando o preto e o branco da tela.
 
-- **Bateria de testes, como numa consulta**, tudo na distância em que a pessoa segura o celular:
-  1. **Tamanho**, com a letra **E** girando: primeiro o olho esquerdo (tapando o direito), depois o direito e por fim os dois juntos. O app mede o menor "E" (em mm na tela) em que a pessoa ainda acerta para onde ele aponta.
-  2. **Contraste**: o "E" fica grande, mas cada vez mais claro, quase sumindo no branco. Quem precisa de mais contraste recebe letras até 25% maiores.
-  3. **"Melhor o 1 ou o 2?"**: como no oftalmologista. O app mostra dois tamanhos de texto, a pessoa compara quantas vezes quiser e escolhe o menor que lê sem esforço. Em 3 rodadas, cada vez mais finas, isso refina o ajuste.
-  4. **Luz para antes de dormir**: a pessoa escolhe a força do filtro âmbar (sem filtro, fraco, médio ou forte) vendo um texto de exemplo.
-- **Escolha do olho**: a tela é uma só e os dois olhos veem a mesma imagem. Por isso o ajuste usa o resultado dos dois olhos juntos (recomendado), ou só o do esquerdo ou só o do direito. Se um olho enxerga bem pior que o outro, o app avisa para procurar um oftalmologista.
-- **Ajuste calibrado**: o texto comum fica com o dobro do menor tamanho que a pessoa distingue, que é a folga para ler sem esforço. Primeiro aumentam as **letras do sistema** (até 200%). Se ainda não for suficiente, entra o **zoom na tela inteira** (até 5×).
+- **Foco geral** é o grau: o tamanho do embaçado que a correção compensa.
+- **Foco fino** é a intensidade. A correção precisa de espaço além do preto e do branco, então ela troca contraste por nitidez: mais forte deixa o fundo mais cinza e as letras mais definidas para o olho embaçado.
+
+![Simulação: o olho embaçado vendo a tela normal e a tela corrigida](docs/simulacao_foco.png)
+
+A imagem acima é uma simulação feita com os mesmos shaders do app, com embaçado de 3 px. A nitidez percebida (correlação com o texto original, 1 = perfeita) sobe de **0,84 para 0,90**. O ganho é real, mas tem limite: corrigir só pela imagem, sem lente, não iguala os óculos, e custa contraste.
+
+**Limite do Android:** nenhum app pode processar a tela ao vivo. Por isso, quando a tela para, o app tira uma foto dela, corrige e mostra a versão corrigida exatamente por cima. Os toques passam direto para o app embaixo. Ao tocar ou rolar, aparece a tela normal; cerca de meio segundo depois de parar, volta a corrigida. Telas protegidas (banco, senhas) e vídeos ficam sem correção. Precisa de **Android 13 ou mais novo**.
+
+O app não substitui a consulta com oftalmologista nem os óculos.
+
+## Os testes
+
+Tudo na distância em que a pessoa segura o celular:
+
+1. **A letra E girando**: primeiro o olho esquerdo (tapando o direito), depois o direito e por fim os dois juntos. Mede o embaçado de cada olho e dá o primeiro palpite do grau.
+2. **Com ou sem correção?**: o mesmo texto de dois jeitos, 1 e 2. Se a pessoa enxergar melhor sem, a correção fica desligada.
+3. **Foco geral**: "melhor o 1 ou o 2?" em 3 rodadas, cada vez mais finas, como as lentes do oftalmologista.
+4. **Foco fino**: a intensidade, em 2 rodadas.
+5. **Luz para antes de dormir**: a força do filtro âmbar.
+
+A tela é uma só e os dois olhos veem a mesma imagem. Por isso o ajuste usa o resultado dos dois olhos juntos (recomendado), ou só o do esquerdo ou só o do direito. Se um olho enxerga bem pior que o outro, o app recomenda procurar um oftalmologista.
+
+## Na tela principal
+
+- **Foco geral** e **foco fino** em barras de 0 a 100, com um texto de exemplo mostrando a correção ao vivo.
 - **Modos**:
-  - **Sem óculos**: o ajuste do teste.
-  - **Antes de dormir**: 15% maior e com o filtro âmbar escolhido no teste, que deixa a tela mais quente e mais fraca.
-  - **Normal**: devolve tudo como estava.
-- **Ajuste fino** de 70% a 150% do recomendado.
-- **O zoom segue você**: ao tocar num campo ou digitar, a área ampliada vai para lá. Para mover a tela ampliada, arraste com dois dedos. Se não mover, ligue também o atalho de Ampliação do Android.
+  - **Sem óculos**: a correção de foco.
+  - **Antes de dormir**: a correção de foco mais o filtro âmbar.
+  - **Normal**: desliga tudo.
 - **Botão rápido "Óculos de tela"** na barra de notificações: um toque liga o último modo, outro desliga.
-- Durante os testes, o zoom e o filtro saem sozinhos, para tudo aparecer no tamanho e na cor reais.
+- **Extra opcional**: também aumentar as letras do sistema. Começa desligado, porque o foco é o principal.
 
 ## Instalar no celular
 
 1. Abra a página **Releases** do repositório no celular e baixe `app-debug.apk` da versão "Última versão".
 2. Permita "instalar apps desconhecidos" para o navegador (só na primeira vez) e instale.
-3. No app, toque em **Permitir mudar as letras** e ligue a opção.
-4. Toque em **Abrir Acessibilidade**, procure **Apps instalados → Regulador de Foco** e ligue. Se o Android disser que é uma "configuração restrita": abra **Informações do app**, toque nos 3 pontinhos (⋮) e em **Permitir configurações restritas**. Depois tente de novo.
+3. No app, toque em **Abrir Acessibilidade**, procure **Apps instalados → Regulador de Foco** e ligue. Se o Android disser que é uma "configuração restrita": abra **Informações do app**, toque nos 3 pontinhos (⋮) e em **Permitir configurações restritas**. Depois tente de novo.
 
 Cada push na `main` gera um APK novo automaticamente.
 
 ## Como funciona por dentro
 
-- `VisionMath.kt`: tamanhos do "E" (0,4 a 12,6 mm, em passos de 0,1 logMAR) e contrastes (1,6% a 100%, dobrando), a escada dos testes (2 acertos em até 3 tentativas para passar de nível), a busca do "1 ou 2" e a conta de letras + zoom. Testado em `VisionMathTest.kt`.
-- `VisionTestActivity.kt`: a bateria de testes, etapa por etapa.
-- `Regulator.kt`: liga os modos e muda o tamanho das letras do sistema (`Settings.System.FONT_SCALE`, com a permissão "alterar configurações do sistema").
-- `FocusService.kt`: serviço de acessibilidade que aplica o zoom na tela toda (`MagnificationController`), centraliza onde há foco ou digitação e desenha o filtro da noite.
-- `RegulatorTileService.kt`: o botão na barra de notificações.
-
-## Próximos passos
-
-- **Pré-nitidez**: deixar a imagem "pré-afiada" de acordo com o embaçado medido, para o olho sem óculos enxergar mais nítido. É experimental: exige capturar a tela continuamente.
-- Teste de astigmatismo.
-- Tamanho da tela (densidade) além das letras, para quem libera a permissão pelo computador.
+- `FocusPasses.kt`: os shaders da correção (AGSL), sem nada de Android: começo, 8 iterações de resíduo e atualização, e o fim, que devolve a cor.
+- `FocusShader.kt`: encadeia as passadas na placa de vídeo e mostra a imagem corrigida (`CorrectedImageView`).
+- `FocusLens.kt`: a lente sobre qualquer app: foto da tela quando ela para, correção e imagem por cima; some ao tocar.
+- `FocusService.kt`: o serviço de acessibilidade que liga a lente e o filtro da noite.
+- `VisionMath.kt`: o teste do "E" (0,4 a 12,6 mm, passos de 0,1 logMAR), o "1 ou 2" e as faixas de foco geral e fino. Testado em `VisionMathTest.kt`.
+- `VisionTestActivity.kt`: os testes. `MainActivity.kt`: a tela principal. `RegulatorTileService.kt`: o botão rápido.

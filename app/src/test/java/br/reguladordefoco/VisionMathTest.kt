@@ -35,8 +35,7 @@ class VisionMathTest {
 
     @Test
     fun staircaseReportsWhenNotEvenTheLargestIsSeen() {
-        val stair = run(VisionMath.SIZES_MM.size)
-        assertNull(stair.smallestPassed)
+        assertNull(run(VisionMath.SIZES_MM.size).smallestPassed)
     }
 
     @Test
@@ -51,83 +50,72 @@ class VisionMathTest {
     }
 
     @Test
-    fun contrastStaircaseUsesItsOwnLevels() {
-        // Enxerga até 6,25% (índice 2): começa em 25% e desce.
-        val stair = VisionMath.Staircase(VisionMath.CONTRASTS.size, VisionMath.CONTRAST_START)
-        while (!stair.finished) stair.answer(stair.index >= 2)
-        assertEquals(2, stair.smallestPassed)
-        assertEquals(0.0625, VisionMath.CONTRASTS[2], 1e-9)
-
-        val blind = VisionMath.Staircase(VisionMath.CONTRASTS.size, VisionMath.CONTRAST_START)
-        while (!blind.finished) blind.answer(false)
-        assertNull(blind.smallestPassed)
-    }
-
-    @Test
-    fun contrastLevelsAndGrays() {
-        assertEquals(1.0, VisionMath.CONTRASTS.last(), 1e-9)
-        assertEquals(0, VisionMath.grayFor(1.0))
-        assertEquals(255, VisionMath.grayFor(0.0))
-        // 50% de contraste na tela pede um cinza bem mais claro que 50%, por causa da gama.
-        assertEquals(186, VisionMath.grayFor(0.5))
-        assertEquals(1.0, VisionMath.contrastFactor(0.03125), 1e-9)
-        assertEquals(1.1, VisionMath.contrastFactor(0.0625), 1e-9)
-        assertEquals(1.25, VisionMath.contrastFactor(0.25), 1e-9)
-    }
-
-    @Test
-    fun comfortSearchMovesTowardTheChoiceInSmallerSteps() {
-        val search = VisionMath.ComfortSearch()
-        assertEquals(1.0 / 1.3, search.smaller, 1e-9)
-        search.choose(VisionMath.ComfortSearch.Choice.BIGGER)
-        assertEquals(1.3, search.value, 1e-9)
-        search.choose(VisionMath.ComfortSearch.Choice.SMALLER)
-        assertEquals(1.3 / 1.15, search.value, 1e-9)
-        search.choose(VisionMath.ComfortSearch.Choice.SAME)
+    fun focusSearchMovesTowardTheChoiceInSmallerSteps() {
+        val search = VisionMath.focusSearch(2.0)
+        assertEquals(2.0 / 1.8, search.smaller, 1e-9)
+        assertEquals(2.0 * 1.8, search.bigger, 1e-9)
+        search.choose(VisionMath.Choice.BIGGER)
+        search.choose(VisionMath.Choice.SMALLER)
+        assertEquals(2.0 * 1.8 / 1.35, search.value, 1e-9)
+        assertFalse(search.finished)
+        search.choose(VisionMath.Choice.SAME)
         assertTrue(search.finished)
-        assertEquals(1.15, VisionMath.roundFine(search.value), 1e-9)
     }
 
     @Test
-    fun comfortSearchStaysInsideTheFineRange() {
-        val search = VisionMath.ComfortSearch()
-        repeat(search.rounds) { search.choose(VisionMath.ComfortSearch.Choice.BIGGER) }
-        assertEquals(VisionMath.FINE_MAX, search.value, 1e-9)
+    fun searchesStayInsideTheirRange() {
+        val focus = VisionMath.focusSearch(10.0)
+        repeat(focus.rounds) { focus.choose(VisionMath.Choice.BIGGER) }
+        assertEquals(VisionMath.FOCUS_MAX_PX, focus.value, 1e-9)
+
+        val fine = VisionMath.fineSearch()
+        repeat(fine.rounds) { fine.choose(VisionMath.Choice.SMALLER) }
+        assertEquals(VisionMath.FINE_K_DEFAULT / 1.3 / 1.14, fine.value, 1e-9)
     }
 
     @Test
-    fun goodVisionNeedsNoChange() {
-        // Texto comum com maiúscula de 1,6 mm; quem lê 0,5 mm não precisa de nada.
-        val s = VisionMath.recommend(thresholdMm = 0.5, bodyCapMm = 1.6)
-        assertEquals(VisionMath.MIN_FONT_SCALE, s.fontScale, 1e-9)
-        assertEquals(1.0, s.zoom, 1e-9)
+    fun onOffKeepsTheCorrectionOnlyWhenItWasChosen() {
+        val with = VisionMath.OnOff(3.0)
+        with.choose(VisionMath.Choice.BIGGER)
+        assertEquals(3.0, with.value, 1e-9)
+        assertTrue(with.finished)
+
+        val same = VisionMath.OnOff(3.0)
+        same.choose(VisionMath.Choice.SAME)
+        assertEquals(0.0, same.value, 1e-9)
     }
 
     @Test
-    fun moderateBlurOnlyGrowsLetters() {
-        val s = VisionMath.recommend(thresholdMm = 1.2, bodyCapMm = 1.6)
-        assertEquals(1.5, s.fontScale, 1e-9)
-        assertEquals(1.0, s.zoom, 1e-9)
+    fun focusEstimateGrowsWithTheBlur() {
+        // Visão normal (~0,5 mm) ainda recebe um palpite mínimo, para o teste ter o que comparar.
+        assertEquals(0.05, VisionMath.focusRadiusEstimateMm(0.5), 1e-9)
+        assertEquals(0.3, VisionMath.focusRadiusEstimateMm(2.0), 1e-9)
     }
 
     @Test
-    fun strongBlurAddsZoomOnTopOfMaxLetters() {
-        val s = VisionMath.recommend(thresholdMm = 2.4, bodyCapMm = 1.6)
-        assertEquals(VisionMath.MAX_FONT_SCALE, s.fontScale, 1e-9)
-        assertEquals(1.5, s.zoom, 1e-9)
+    fun logScaleRoundTrips() {
+        val min = VisionMath.FOCUS_MIN_PX
+        val max = VisionMath.FOCUS_MAX_PX
+        assertEquals(min, VisionMath.logScale(0, 100, min, max), 1e-9)
+        assertEquals(max, VisionMath.logScale(100, 100, min, max), 1e-9)
+        for (level in 0..100) {
+            assertEquals(level, VisionMath.logLevel(VisionMath.logScale(level, 100, min, max), 100, min, max))
+        }
     }
 
     @Test
-    fun zoomIsCapped() {
-        val s = VisionMath.recommend(thresholdMm = 20.0, bodyCapMm = 1.6)
-        assertEquals(VisionMath.MAX_ZOOM, s.zoom, 1e-9)
+    fun fineLevelGoesFromWeakToStrong() {
+        assertEquals(0, VisionMath.fineLevel(VisionMath.FINE_K_MAX))
+        assertEquals(100, VisionMath.fineLevel(VisionMath.FINE_K_MIN))
+        for (level in 0..100) assertEquals(level, VisionMath.fineLevel(VisionMath.fineK(level)))
     }
 
     @Test
-    fun fineTuneAndNightScaleTheResult() {
-        val base = VisionMath.recommend(1.0, 1.6)
-        val more = VisionMath.recommend(1.0, 1.6, fineTune = 1.2, extra = VisionMath.NIGHT_EXTRA)
-        assertEquals(base.fontScale * 1.2 * VisionMath.NIGHT_EXTRA, more.fontScale, 1e-9)
+    fun fontScaleOnlyWhenTheTextIsTooSmall() {
+        // Texto comum com maiúscula de 1,6 mm.
+        assertEquals(VisionMath.MIN_FONT_SCALE, VisionMath.recommendFontScale(0.5, 1.6), 1e-9)
+        assertEquals(1.5, VisionMath.recommendFontScale(1.2, 1.6), 1e-9)
+        assertEquals(VisionMath.MAX_FONT_SCALE, VisionMath.recommendFontScale(5.0, 1.6), 1e-9)
     }
 
     @Test

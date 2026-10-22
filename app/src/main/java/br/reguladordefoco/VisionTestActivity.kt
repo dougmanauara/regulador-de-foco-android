@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -17,22 +16,24 @@ import kotlin.random.Random
 
 /**
  * A bateria de testes, como numa consulta, na distância em que a pessoa usa o celular:
- * 1. Tamanho (o "E" que gira): olho esquerdo, olho direito e os dois juntos.
- * 2. Contraste: o "E" vai ficando cinza-claro.
- * 3. "Melhor o 1 ou o 2?": dois tamanhos de texto, para refinar o ajuste.
- * 4. Conforto da luz para a noite: a força do filtro âmbar.
+ * 1. O "E" que gira: olho esquerdo, olho direito e os dois juntos. Mede o quanto cada um embaça.
+ * 2. Com ou sem correção de foco: confere se a correção ajuda.
+ * 3. Foco geral: o grau da correção, no "melhor o 1 ou o 2?".
+ * 4. Foco fino: a intensidade, também no "1 ou 2".
+ * 5. Conforto da luz para a noite: a força do filtro âmbar.
  */
 class VisionTestActivity : Activity() {
-    private enum class Step { ACUITY_LEFT, ACUITY_RIGHT, ACUITY_BOTH, CONTRAST, COMFORT, NIGHT }
+    private enum class Step { ACUITY_LEFT, ACUITY_RIGHT, ACUITY_BOTH, FOCUS_CHECK, FOCUS_GENERAL, FOCUS_FINE, NIGHT }
 
     private lateinit var store: Store
+    private val steps = Step.entries.filter { FocusShader.available || it !in FOCUS_STEPS }
     private var stepIndex = 0
-    private val step get() = Step.entries[stepIndex]
+    private val step get() = steps[stepIndex]
     private lateinit var stair: VisionMath.Staircase
     private lateinit var optotype: OptotypeView
     private lateinit var progress: TextView
     private var direction = Direction.RIGHT
-    private val couldNotSeeEasiest = mutableSetOf<Step>()
+    private val couldNotSeeLargest = mutableSetOf<Step>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,41 +42,47 @@ class VisionTestActivity : Activity() {
         showIntro()
     }
 
-    // Sem zoom nem filtro durante o teste: tudo tem que aparecer no tamanho e na cor reais.
+    // Sem correção nem filtro durante o teste: tudo tem que aparecer como a tela é de verdade.
     override fun onStart() {
         super.onStart()
-        store.testing = true
+        InApp.start(store)
     }
 
     override fun onStop() {
-        store.testing = false
+        InApp.stop(store)
         super.onStop()
     }
 
     private fun next() {
         stepIndex++
-        if (stepIndex < Step.entries.size) showIntro() else showSummary()
+        // Quem preferiu sem correção não precisa ajustar o grau dela.
+        while (stepIndex < steps.size && step in FOCUS_TUNING && !store.focusEnabled) stepIndex++
+        if (stepIndex < steps.size) showIntro() else showSummary()
     }
 
     // ---- Apresentação de cada etapa ----
 
     private fun showIntro() {
         val col = Ui.column(this)
-        col.addView(Ui.text(this, "Teste ${stepIndex + 1} de ${Step.entries.size}", 18f, Ui.MUTED))
+        col.addView(Ui.text(this, "Teste ${stepIndex + 1} de ${steps.size}", 18f, Ui.MUTED))
         val (title, body) = when (step) {
-            Step.ACUITY_LEFT -> "Tamanho · olho ESQUERDO" to
+            Step.ACUITY_LEFT -> "Olho ESQUERDO" to
                 "Tape o olho DIREITO com a mão, sem apertar.\n\n$HOLD\n\n$E_RULES"
-            Step.ACUITY_RIGHT -> "Tamanho · olho DIREITO" to
+            Step.ACUITY_RIGHT -> "Olho DIREITO" to
                 "Agora tape o olho ESQUERDO com a mão, sem apertar.\n\n$HOLD"
-            Step.ACUITY_BOTH -> "Tamanho · os DOIS olhos" to
+            Step.ACUITY_BOTH -> "Os DOIS olhos" to
                 "Agora destampe e use os dois olhos, como no dia a dia.\n\n$HOLD"
-            Step.CONTRAST -> "Contraste" to
-                "Com os dois olhos. Agora o E é grande, mas vai ficando cada vez mais claro, " +
-                "quase sumindo no branco.\n\n$E_RULES"
-            Step.COMFORT -> "Melhor o 1 ou o 2?" to
-                "Como no oftalmologista. Vão aparecer dois tamanhos de texto: toque em 1 e em 2 " +
-                "para comparar quantas vezes quiser.\n\nEscolha o MENOR que você lê sem nenhum " +
-                "esforço. Se os dois estiverem bons, fique com o menor."
+            Step.FOCUS_CHECK -> "Correção de foco" to
+                "Agora é o foco, como as lentes do oftalmologista. Vai aparecer um texto de dois " +
+                "jeitos: 1 e 2. Um deles está com a correção de foco calculada para o seu embaçado.\n\n" +
+                "Toque em 1 e em 2 para comparar quantas vezes quiser, na mesma distância de antes, " +
+                "e escolha o MAIS NÍTIDO."
+            Step.FOCUS_GENERAL -> "Foco geral" to
+                "Agora o grau da correção. Em cada rodada, compare 1 e 2 e escolha o MAIS NÍTIDO: " +
+                "letras mais definidas, menos borradas."
+            Step.FOCUS_FINE -> "Foco fino" to
+                "Por último, a intensidade. Escolha o mais nítido E confortável: sem bordas " +
+                "brilhando nem letras \"tremidas\"."
             Step.NIGHT -> "Luz para antes de dormir" to
                 "Se puder, faça esta parte no lugar onde usa o celular antes de dormir, com a luz " +
                 "apagada.\n\nEscolha o filtro em que a tela fica mais confortável, sem ofuscar."
@@ -87,18 +94,35 @@ class VisionTestActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(col); setBackgroundColor(Ui.BG) })
     }
 
-    private fun start() = when (step) {
-        Step.ACUITY_LEFT, Step.ACUITY_RIGHT, Step.ACUITY_BOTH ->
-            startE(VisionMath.Staircase(VisionMath.SIZES_MM.size, VisionMath.START_INDEX))
-        Step.CONTRAST -> startE(VisionMath.Staircase(VisionMath.CONTRASTS.size, VisionMath.CONTRAST_START))
-        Step.COMFORT -> startComfort()
-        Step.NIGHT -> startNight()
+    private fun start() {
+        when (step) {
+            Step.ACUITY_LEFT, Step.ACUITY_RIGHT, Step.ACUITY_BOTH -> startE()
+            Step.FOCUS_CHECK -> {
+                val estimate = Regulator.mmToPx(this, VisionMath.focusRadiusEstimateMm(threshold()))
+                startPair(VisionMath.OnOff(estimate.coerceIn(1.0, VisionMath.FOCUS_MAX_PX)), { sample, r ->
+                    sample.setFocus(r, VisionMath.FINE_K_DEFAULT)
+                }) { r ->
+                    store.focusEnabled = r > 0.0
+                    if (r > 0.0) store.focusRadius = r
+                    store.focusContrast = VisionMath.FINE_K_DEFAULT
+                }
+            }
+            Step.FOCUS_GENERAL -> startPair(VisionMath.focusSearch(store.focusRadius), { sample, r ->
+                sample.setFocus(r, store.focusContrast)
+            }) { r -> store.focusRadius = r }
+            Step.FOCUS_FINE -> startPair(VisionMath.fineSearch(store.focusContrast), { sample, k ->
+                sample.setFocus(store.focusRadius, k)
+            }) { k -> store.focusContrast = k }
+            Step.NIGHT -> startNight()
+        }
     }
 
-    // ---- Tamanho e contraste: o "E" que gira ----
+    private fun threshold(): Double = store.chosenThreshold() ?: VisionMath.SIZES_MM[VisionMath.START_INDEX]
 
-    private fun startE(staircase: VisionMath.Staircase) {
-        stair = staircase
+    // ---- O "E" que gira ----
+
+    private fun startE() {
+        stair = VisionMath.Staircase()
         val col = Ui.column(this)
         progress = Ui.text(this, "", 18f, Ui.MUTED)
         col.addView(progress)
@@ -131,22 +155,12 @@ class VisionTestActivity : Activity() {
         return pad
     }
 
-    private fun mmToPx(mm: Double): Float = (mm / 25.4 * Regulator.reliableDpi(resources.displayMetrics)).toFloat()
-
     private fun nextTrial() {
         // Nunca repete o lado: assim fica claro que mudou de tentativa.
         direction = Direction.entries.filter { it != direction }.random(Random)
-        val levels: Int
-        if (step == Step.CONTRAST) {
-            val acuity = store.threshold(EyeSource.BOTH) ?: store.chosenThreshold() ?: VisionMath.SIZES_MM[0]
-            val gray = VisionMath.grayFor(VisionMath.CONTRASTS[stair.index])
-            optotype.show(mmToPx(VisionMath.contrastTestSizeMm(acuity)), direction, Color.rgb(gray, gray, gray))
-            levels = VisionMath.CONTRASTS.size
-        } else {
-            optotype.show(mmToPx(VisionMath.SIZES_MM[stair.index]), direction, Color.BLACK)
-            levels = VisionMath.SIZES_MM.size
-        }
-        progress.text = "${stepName(step)} · nível ${levels - stair.index} de $levels"
+        optotype.show(Regulator.mmToPx(this, VisionMath.SIZES_MM[stair.index]).toFloat(), direction)
+        val levels = VisionMath.SIZES_MM.size
+        progress.text = "${eyeName(eyeOf(step))} · tamanho ${levels - stair.index} de $levels"
     }
 
     private fun answer(chosen: Direction?) {
@@ -156,103 +170,78 @@ class VisionTestActivity : Activity() {
             return
         }
         val passed = stair.smallestPassed
-        if (passed == null) couldNotSeeEasiest += step
-        when (step) {
-            // Nem o maior "E" deu: conta como um passo além do maior, e o zoom compensa.
-            Step.ACUITY_LEFT, Step.ACUITY_RIGHT, Step.ACUITY_BOTH -> store.setThreshold(
-                eyeOf(step), passed?.let { VisionMath.SIZES_MM[it] } ?: (VisionMath.SIZES_MM.last() * 1.26)
-            )
-            else -> store.contrastThreshold = passed?.let { VisionMath.CONTRASTS[it] } ?: 2.0
-        }
+        if (passed == null) couldNotSeeLargest += step
+        // Nem o maior "E" deu: conta como um passo além do maior.
+        store.setThreshold(eyeOf(step), passed?.let { VisionMath.SIZES_MM[it] } ?: (VisionMath.SIZES_MM.last() * 1.26))
         next()
     }
 
-    // ---- "Melhor o 1 ou o 2?" ----
+    // ---- "Melhor o 1 ou o 2?" com o foco ----
 
-    private fun startComfort() {
-        val search = VisionMath.ComfortSearch(VisionMath.roundFine(store.fineTune))
+    /** Texto de exemplo num tamanho em que o embaçado atrapalha: o dobro do limite da pessoa. */
+    private fun sampleText() = CorrectedImageView(this).apply {
+        setBackgroundColor(Color.WHITE)
+        bitmap = sampleBitmap(this@VisionTestActivity, SAMPLE, threshold())
+    }
+
+    private fun startPair(
+        search: VisionMath.PairChoice,
+        render: (CorrectedImageView, Double) -> Unit,
+        onDone: (Double) -> Unit,
+    ) {
         val col = Ui.column(this)
         val info = Ui.text(this, "", 18f, Ui.MUTED)
         col.addView(info)
         val sample = sampleText()
-        col.addView(
-            FrameLayout(this).apply { setBackgroundColor(Color.WHITE); addView(sample) },
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
-        )
+        col.addView(sample, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         val toggles = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         col.addView(toggles)
         val choices = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(choices)
+        setContentView(col)
 
-        fun pxFor(fine: Double): Float {
-            val s = VisionMath.recommend(
-                store.chosenThreshold() ?: VisionMath.SIZES_MM[VisionMath.START_INDEX],
-                Regulator.bodyCapMm(this), fine, store.contrastFactor()
-            )
-            return (14.0 * resources.displayMetrics.density * s.fontScale * s.zoom).toFloat()
-        }
-
-        lateinit var render: () -> Unit
-        var showing = 1
-        fun choose(c: VisionMath.ComfortSearch.Choice) {
-            search.choose(c)
+        fun round() {
             if (search.finished) {
-                store.fineTune = VisionMath.roundFine(search.value)
+                onDone(search.value)
                 next()
-            } else {
-                showing = 1
-                render()
+                return
             }
-        }
-        render = {
+            if (search.smaller == search.bigger) {
+                // Já no limite: não há o que comparar nesta rodada.
+                search.choose(VisionMath.Choice.SAME)
+                round()
+                return
+            }
             // Ordem sorteada: o 1 nem sempre é o menor, para não viciar a escolha.
             val smallerFirst = Random.nextBoolean()
-            val one = if (smallerFirst) search.smaller else search.bigger
-            val two = if (smallerFirst) search.bigger else search.smaller
-            val pxOne = pxFor(one)
-            val pxTwo = pxFor(two)
-            if (pxOne == pxTwo) {
-                // Mesmo tamanho (já no mínimo das letras): não há o que comparar nesta rodada.
-                choose(VisionMath.ComfortSearch.Choice.SAME)
-            } else {
-                info.text = "Rodada ${search.round + 1} de ${search.rounds}"
-                fun show(which: Int) {
-                    showing = which
-                    sample.setTextSize(TypedValue.COMPLEX_UNIT_PX, if (which == 1) pxOne else pxTwo)
-                    toggles.removeAllViews()
-                    for (n in 1..2) {
-                        toggles.addView(
-                            Ui.button(this, "$n", filled = n == showing) { show(n) }.apply { textSize = 26f },
-                            LinearLayout.LayoutParams(0, Ui.dp(this, 64f), 1f).apply {
-                                val m = Ui.dp(this@VisionTestActivity, 4f)
-                                setMargins(m, m, m, m)
-                            }
-                        )
-                    }
-                }
-                show(showing)
-                fun pick(n: Int) = if ((n == 1) == smallerFirst) {
-                    VisionMath.ComfortSearch.Choice.SMALLER
-                } else {
-                    VisionMath.ComfortSearch.Choice.BIGGER
-                }
-                choices.removeAllViews()
-                choices.addView(Ui.button(this, "Fico com o 1") { choose(pick(1)) })
-                choices.addView(Ui.button(this, "Fico com o 2") { choose(pick(2)) })
-                choices.addView(Ui.button(this, "Tanto faz", filled = false) {
-                    choose(VisionMath.ComfortSearch.Choice.SAME)
-                })
-            }
-        }
-        setContentView(col)
-        render()
-    }
+            val values = if (smallerFirst) listOf(search.smaller, search.bigger) else listOf(search.bigger, search.smaller)
+            info.text = if (search.rounds > 1) "Rodada ${search.round + 1} de ${search.rounds}" else ""
 
-    private fun sampleText() = TextView(this).apply {
-        text = SAMPLE
-        setTextColor(Color.BLACK)
-        val pad = Ui.dp(context, 12f)
-        setPadding(pad, pad, pad, pad)
+            fun show(which: Int) {
+                render(sample, values[which - 1])
+                toggles.removeAllViews()
+                for (n in 1..2) {
+                    toggles.addView(
+                        Ui.button(this, "$n", filled = n == which) { show(n) }.apply { textSize = 26f },
+                        LinearLayout.LayoutParams(0, Ui.dp(this, 64f), 1f).apply {
+                            val m = Ui.dp(this@VisionTestActivity, 4f)
+                            setMargins(m, m, m, m)
+                        }
+                    )
+                }
+            }
+            show(1)
+
+            fun pick(n: Int) = if ((n == 1) == smallerFirst) VisionMath.Choice.SMALLER else VisionMath.Choice.BIGGER
+            choices.removeAllViews()
+            choices.addView(Ui.button(this, "O 1 está mais nítido") { search.choose(pick(1)); round() })
+            choices.addView(Ui.button(this, "O 2 está mais nítido") { search.choose(pick(2)); round() })
+            choices.addView(Ui.button(this, "Tanto faz", filled = false) {
+                search.choose(VisionMath.Choice.SAME)
+                round()
+            })
+        }
+        round()
     }
 
     // ---- Luz para antes de dormir ----
@@ -260,17 +249,10 @@ class VisionTestActivity : Activity() {
     private fun startNight() {
         val col = Ui.column(this)
         val sample = sampleText()
+        if (store.focusEnabled) sample.setFocus(store.focusRadius, store.focusContrast)
         val filter = View(this)
-        val nightSetting = Regulator.setting(this, store, Profile.NIGHT)
-        nightSetting?.let {
-            sample.setTextSize(
-                TypedValue.COMPLEX_UNIT_PX,
-                (14.0 * resources.displayMetrics.density * it.fontScale * it.zoom).toFloat()
-            )
-        }
         col.addView(
             FrameLayout(this).apply {
-                setBackgroundColor(Color.WHITE)
                 addView(sample)
                 addView(filter, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             },
@@ -305,7 +287,7 @@ class VisionTestActivity : Activity() {
         col.addView(Ui.text(this, "Resultado", 30f, Ui.ACCENT, bold = true))
         for (s in listOf(Step.ACUITY_LEFT, Step.ACUITY_RIGHT, Step.ACUITY_BOTH)) {
             val mm = store.threshold(eyeOf(s)) ?: continue
-            val note = if (s in couldNotSeeEasiest) " (não viu nem o maior)" else ""
+            val note = if (s in couldNotSeeLargest) " (não viu nem o maior)" else ""
             col.addView(Ui.text(this, "${eyeName(eyeOf(s))}: vê letras a partir de ${Ui.format(mm)} mm$note", 21f))
         }
         val left = store.threshold(EyeSource.LEFT)
@@ -320,14 +302,8 @@ class VisionTestActivity : Activity() {
                 )
             )
         }
-        store.contrastThreshold?.let {
-            col.addView(Ui.text(this, "Contraste: ${contrastName(it)}", 21f))
-        }
-        col.addView(Ui.text(this, "Preferência de tamanho (1 ou 2): ${Ui.percent(store.fineTune)}", 21f))
+        col.addView(Ui.text(this, focusSummary(store), 22f, bold = true))
         col.addView(Ui.text(this, "Filtro da noite: ${Ui.percent(store.nightFilter.toDouble())}", 21f))
-        Regulator.setting(this, store, Profile.NO_GLASSES)?.let {
-            col.addView(Ui.text(this, "Ajuste recomendado: ${describe(it)}", 22f, bold = true))
-        }
         val warning = Ui.text(this, "", 20f, Ui.WARN)
         col.addView(Ui.button(this, "Ligar o modo \"Sem óculos\"") {
             val problems = Regulator.apply(this, Profile.NO_GLASSES)
@@ -344,14 +320,15 @@ class VisionTestActivity : Activity() {
         else -> EyeSource.BOTH
     }
 
-    private fun stepName(s: Step) = if (s == Step.CONTRAST) "Contraste" else eyeName(eyeOf(s))
-
     companion object {
+        private val FOCUS_TUNING = setOf(Step.FOCUS_GENERAL, Step.FOCUS_FINE)
+        private val FOCUS_STEPS = FOCUS_TUNING + Step.FOCUS_CHECK
+
         private const val HOLD = "Segure o celular na distância de sempre, do jeito que você quer usar " +
             "o ajuste (por exemplo, sem óculos). Não aproxime nem afaste durante os testes."
         private const val E_RULES = "Vai aparecer a letra E virada para um lado. Toque na seta para onde " +
             "as \"pernas\" do E apontam. Se não der para ver, toque em \"Não consigo ver\". Na dúvida, " +
-            "chute: o teste repete cada nível."
+            "chute: o teste repete cada tamanho."
         private const val SAMPLE = "O sol entrava pela janela da cozinha enquanto o café passava. " +
             "Lá fora, as crianças corriam atrás da bola e o cachorro latia sem parar. Era um domingo " +
             "tranquilo, bom para ler as notícias com calma e responder as mensagens da família."
@@ -362,15 +339,24 @@ class VisionTestActivity : Activity() {
             EyeSource.BOTH -> "Os dois olhos"
         }
 
-        fun contrastName(threshold: Double) = when (VisionMath.contrastFactor(threshold)) {
-            1.0 -> "normal"
-            1.1 -> "um pouco baixo (letras 10% maiores)"
-            else -> "baixo (letras 25% maiores; tela mais clara ajuda)"
-        }
+        /** Grau e intensidade como níveis de 0 a 100, mais fáceis de ler que px. */
+        fun focusLevel(radiusPx: Double) =
+            VisionMath.logLevel(radiusPx, 100, VisionMath.FOCUS_MIN_PX, VisionMath.FOCUS_MAX_PX)
 
-        fun describe(s: VisionMath.Setting): String {
-            val zoom = if (s.zoom > 1.0) " · zoom ${Ui.format(s.zoom)}×" else " · sem zoom"
-            return "letras em ${Ui.percent(s.fontScale)}$zoom"
+
+        /** O texto de exemplo como imagem, da largura da tela, para receber a correção. */
+        fun sampleBitmap(context: Context, text: String, thresholdMm: Double) = FocusShader.textBitmap(
+            text,
+            Regulator.mmToPx(context, 2 * thresholdMm).toFloat(),
+            context.resources.displayMetrics.widthPixels - 2 * Ui.dp(context, 20f),
+            Ui.dp(context, 12f),
+        )
+
+        fun focusSummary(store: Store): String = when {
+            !FocusShader.available -> "Correção de foco: precisa do Android 13 ou mais novo."
+            !store.focusEnabled -> "Correção de foco: desligada (você enxergou melhor sem ela)."
+            else -> "Correção de foco: foco geral ${focusLevel(store.focusRadius)}, " +
+                "foco fino ${VisionMath.fineLevel(store.focusContrast)} (de 0 a 100)"
         }
     }
 }
@@ -383,9 +369,9 @@ enum class Direction(val degrees: Float, val arrow: String, val label: String) {
     UP(270f, "↑", "Cima"),
 }
 
-/** O "E" em fundo branco: 5 traços de altura, como nas tabelas de consultório. */
+/** O "E" preto em fundo branco: 5 traços de altura, como nas tabelas de consultório. */
 class OptotypeView(context: Context) : View(context) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     private var heightPx = 0f
     private var direction = Direction.RIGHT
 
@@ -394,10 +380,9 @@ class OptotypeView(context: Context) : View(context) {
         contentDescription = "Letra E"
     }
 
-    fun show(heightPx: Float, direction: Direction, color: Int) {
+    fun show(heightPx: Float, direction: Direction) {
         this.heightPx = heightPx
         this.direction = direction
-        paint.color = color
         invalidate()
     }
 
