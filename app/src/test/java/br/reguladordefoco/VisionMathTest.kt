@@ -37,7 +37,6 @@ class VisionMathTest {
     fun staircaseReportsWhenNotEvenTheLargestIsSeen() {
         val stair = run(VisionMath.SIZES_MM.size)
         assertNull(stair.smallestPassed)
-        assertNull(stair.thresholdMm)
     }
 
     @Test
@@ -49,6 +48,51 @@ class VisionMathTest {
         assertEquals(start, stair.index)
         stair.answer(false)
         assertEquals(start + 1, stair.index)
+    }
+
+    @Test
+    fun contrastStaircaseUsesItsOwnLevels() {
+        // Enxerga até 6,25% (índice 2): começa em 25% e desce.
+        val stair = VisionMath.Staircase(VisionMath.CONTRASTS.size, VisionMath.CONTRAST_START)
+        while (!stair.finished) stair.answer(stair.index >= 2)
+        assertEquals(2, stair.smallestPassed)
+        assertEquals(0.0625, VisionMath.CONTRASTS[2], 1e-9)
+
+        val blind = VisionMath.Staircase(VisionMath.CONTRASTS.size, VisionMath.CONTRAST_START)
+        while (!blind.finished) blind.answer(false)
+        assertNull(blind.smallestPassed)
+    }
+
+    @Test
+    fun contrastLevelsAndGrays() {
+        assertEquals(1.0, VisionMath.CONTRASTS.last(), 1e-9)
+        assertEquals(0, VisionMath.grayFor(1.0))
+        assertEquals(255, VisionMath.grayFor(0.0))
+        // 50% de contraste na tela pede um cinza bem mais claro que 50%, por causa da gama.
+        assertEquals(186, VisionMath.grayFor(0.5))
+        assertEquals(1.0, VisionMath.contrastFactor(0.03125), 1e-9)
+        assertEquals(1.1, VisionMath.contrastFactor(0.0625), 1e-9)
+        assertEquals(1.25, VisionMath.contrastFactor(0.25), 1e-9)
+    }
+
+    @Test
+    fun comfortSearchMovesTowardTheChoiceInSmallerSteps() {
+        val search = VisionMath.ComfortSearch()
+        assertEquals(1.0 / 1.3, search.smaller, 1e-9)
+        search.choose(VisionMath.ComfortSearch.Choice.BIGGER)
+        assertEquals(1.3, search.value, 1e-9)
+        search.choose(VisionMath.ComfortSearch.Choice.SMALLER)
+        assertEquals(1.3 / 1.15, search.value, 1e-9)
+        search.choose(VisionMath.ComfortSearch.Choice.SAME)
+        assertTrue(search.finished)
+        assertEquals(1.15, VisionMath.roundFine(search.value), 1e-9)
+    }
+
+    @Test
+    fun comfortSearchStaysInsideTheFineRange() {
+        val search = VisionMath.ComfortSearch()
+        repeat(search.rounds) { search.choose(VisionMath.ComfortSearch.Choice.BIGGER) }
+        assertEquals(VisionMath.FINE_MAX, search.value, 1e-9)
     }
 
     @Test

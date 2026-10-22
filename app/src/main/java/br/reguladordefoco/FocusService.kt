@@ -30,7 +30,7 @@ class FocusService : AccessibilityService(), SharedPreferences.OnSharedPreferenc
     }
 
     override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
-        if (key == null || key == Store.KEY_PROFILE || key == Store.KEY_ZOOM || key == Store.KEY_TESTING) {
+        if (key == null || key in KEYS) {
             applyFromStore()
         }
     }
@@ -38,7 +38,7 @@ class FocusService : AccessibilityService(), SharedPreferences.OnSharedPreferenc
     private fun applyFromStore() {
         val active = store.profile != Profile.NORMAL && !store.testing
         setZoom(if (active) store.targetZoom else 1f)
-        setNight(active && store.profile == Profile.NIGHT)
+        setNight(if (active && store.profile == Profile.NIGHT) store.nightFilter else 0f)
     }
 
     private fun setZoom(scale: Float) {
@@ -82,10 +82,12 @@ class FocusService : AccessibilityService(), SharedPreferences.OnSharedPreferenc
         return controller.scale
     }
 
-    private fun setNight(on: Boolean) {
+    private fun setNight(strength: Float) {
         val current = nightView
-        if (on && current == null) {
-            val view = View(this).apply { setBackgroundColor(NIGHT_COLOR) }
+        if (strength > 0f && current != null) {
+            current.setBackgroundColor(nightColor(strength))
+        } else if (strength > 0f) {
+            val view = View(this).apply { setBackgroundColor(nightColor(strength)) }
             val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -100,7 +102,7 @@ class FocusService : AccessibilityService(), SharedPreferences.OnSharedPreferenc
             lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             wm.addView(view, lp)
             nightView = view
-        } else if (!on && current != null) {
+        } else if (current != null) {
             wm.removeView(current)
             nightView = null
         }
@@ -123,7 +125,7 @@ class FocusService : AccessibilityService(), SharedPreferences.OnSharedPreferenc
 
     override fun onDestroy() {
         if (::store.isInitialized) store.prefs.unregisterOnSharedPreferenceChangeListener(this)
-        setNight(false)
+        setNight(0f)
         setZoom(1f)
         super.onDestroy()
     }
@@ -137,7 +139,9 @@ class FocusService : AccessibilityService(), SharedPreferences.OnSharedPreferenc
     }
 
     companion object {
-        /** Âmbar escuro a 35%: tela mais quente e mais fraca para antes de dormir. */
-        private const val NIGHT_COLOR = 0x59301800
+        private val KEYS = setOf(Store.KEY_PROFILE, Store.KEY_ZOOM, Store.KEY_TESTING, Store.KEY_NIGHT_FILTER)
+
+        /** Âmbar escuro por cima de tudo: tela mais quente e mais fraca para antes de dormir. */
+        fun nightColor(strength: Float): Int = (Math.round(strength * 255) shl 24) or 0x301800
     }
 }

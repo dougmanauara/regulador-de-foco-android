@@ -99,7 +99,8 @@ class MainActivity : Activity() {
         val tested = EyeSource.entries.mapNotNull { eye -> store.threshold(eye)?.let { eye to it } }
         if (tested.isEmpty()) {
             col.addView(
-                Ui.text(this, "Leva uns 3 minutos: um olho de cada vez e depois os dois juntos.", 20f)
+                Ui.text(this, "Leva uns 5 minutos, como numa consulta: tamanho (um olho de cada vez e " +
+                    "depois os dois), contraste, \"melhor o 1 ou o 2?\" e a luz para antes de dormir.", 20f)
             )
             col.addView(Ui.button(this, "Fazer o teste") { openTest() })
             return
@@ -186,8 +187,8 @@ class MainActivity : Activity() {
     private fun openTest() = startActivity(Intent(this, VisionTestActivity::class.java))
 
     companion object {
-        private const val FINE_MIN = 0.7
-        private const val FINE_STEP = 0.05
-        private const val FINE_STEPS = 16
+        private const val FINE_MIN = VisionMath.FINE_MIN
+        private const val FINE_STEP = VisionMath.FINE_STEP
+        private val FINE_STEPS = Math.round((VisionMath.FINE_MAX - FINE_MIN) / FINE_STEP).toInt()
     }
 }

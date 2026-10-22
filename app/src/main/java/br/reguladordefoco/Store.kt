@@ -38,6 +38,19 @@ class Store(context: Context) {
         }
     }
 
+    /** Menor contraste que a pessoa enxerga (0 a 1; 2 = nem o preto), ou null sem teste. */
+    var contrastThreshold: Double?
+        get() = prefs.getFloat("contrast_threshold", -1f).takeIf { it > 0f }?.toDouble()
+        set(v) = prefs.edit().putFloat("contrast_threshold", v?.toFloat() ?: -1f).apply()
+
+    /** Quanto o contraste pede a mais de tamanho (1 sem o teste). */
+    fun contrastFactor(): Double = contrastThreshold?.let { VisionMath.contrastFactor(it) } ?: 1.0
+
+    /** Força do filtro âmbar do modo Antes de dormir (0 a 1). */
+    var nightFilter: Float
+        get() = prefs.getFloat(KEY_NIGHT_FILTER, 0.35f)
+        set(v) = prefs.edit().putFloat(KEY_NIGHT_FILTER, v).apply()
+
     /** Ajuste fino por cima do teste: 1.0 = como o teste mandou. */
     var fineTune: Double
         get() = prefs.getFloat("fine_tune", 1f).toDouble()
@@ -71,5 +84,6 @@ class Store(context: Context) {
         const val KEY_PROFILE = "profile"
         const val KEY_ZOOM = "target_zoom"
         const val KEY_TESTING = "testing"
+        const val KEY_NIGHT_FILTER = "night_filter"
     }
 }

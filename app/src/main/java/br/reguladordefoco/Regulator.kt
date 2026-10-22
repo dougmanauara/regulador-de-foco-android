@@ -24,7 +24,8 @@ object Regulator {
     fun setting(context: Context, store: Store, profile: Profile): VisionMath.Setting? {
         if (profile == Profile.NORMAL) return null
         val threshold = store.chosenThreshold() ?: return null
-        val extra = if (profile == Profile.NIGHT) VisionMath.NIGHT_EXTRA else 1.0
+        val night = if (profile == Profile.NIGHT) VisionMath.NIGHT_EXTRA else 1.0
+        val extra = night * store.contrastFactor()
         return VisionMath.recommend(threshold, bodyCapMm(context), store.fineTune, extra)
     }
 
@@ -57,7 +58,8 @@ object Regulator {
         store.targetZoom = setting?.zoom?.toFloat() ?: 1f
         store.profile = profile
         if (profile != Profile.NORMAL) store.lastActiveProfile = profile
-        val needsService = setting != null && (setting.zoom > 1.0 || profile == Profile.NIGHT)
+        val needsService = setting != null &&
+            (setting.zoom > 1.0 || (profile == Profile.NIGHT && store.nightFilter > 0f))
         if (needsService && !isServiceOn(context)) {
             problems += "Falta ligar o serviço do Regulador (zoom e filtro da noite)."
         }
