@@ -39,6 +39,14 @@ A tela é uma só e os dois olhos veem a mesma imagem. Por isso o ajuste usa o r
 - **Botão rápido "Óculos de tela"** na barra de notificações: um toque liga o último modo, outro desliga.
 - **Extra opcional**: também aumentar as letras do sistema. Começa desligado, porque o foco é o principal.
 
+## Celular mais leve
+
+Na tela principal, **Verificar o celular** abre uma checagem do que deixa o celular mais lento. O Android não deixa um app desativar ou desinstalar outro, nem mudar sozinho as configurações de sistema. Por isso o app encontra o problema, explica e abre a tela certa do Android, onde a pessoa só toca em "Desativar" ou "Desinstalar". Desativar dá para desfazer na mesma tela.
+
+- **Fluidez**: avisa se a economia de energia está ligada (ela deixa o processador mais lento), se sobra menos de 15% de espaço livre e se as animações estão na velocidade normal. Nesse caso, ensina a passar para 0,5× nas Opções do desenvolvedor. Também lembra da "Suavidade de movimento" em 120 Hz.
+- **Apps de fábrica dispensáveis**: uma lista fechada e conservadora, só com o que é seguro desativar (Bixby, Samsung Free, AR Zone, Samsung TV Plus, os instaladores do Facebook, OneDrive e outros). Fica de fora tudo o que o sistema usa.
+- **Apps parados há 30 dias ou mais**, do maior para o menor. Precisa da permissão "Acesso aos dados de uso", que o app pede.
+
 ## Instalar no celular
 
 1. Abra a página **Releases** do repositório no celular e baixe `app-debug.apk` da versão "Última versão".
@@ -54,4 +62,5 @@ Cada push na `main` gera um APK novo automaticamente.
 - `FocusLens.kt`: a lente sobre qualquer app: foto da tela quando ela para, correção e imagem por cima; some ao tocar.
 - `FocusService.kt`: o serviço de acessibilidade que liga a lente e o filtro da noite.
 - `VisionMath.kt`: o teste do "E" (0,4 a 12,6 mm, passos de 0,1 logMAR), o "1 ou 2" e as faixas de foco geral e fino. Testado em `VisionMathTest.kt`.
+- `Cleanup.kt` e `CleanupActivity.kt`: o "Celular mais leve" (regras testadas em `CleanupTest.kt`).
 - `VisionTestActivity.kt`: os testes. `MainActivity.kt`: a tela principal. `RegulatorTileService.kt`: o botão rápido.

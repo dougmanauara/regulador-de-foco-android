@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Mudar o tamanho das letras do sistema (o usuário libera numa tela do Android). -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+
+    <!-- "Celular mais leve": ver os apps instalados, quando foram usados e quanto ocupam. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="false"
@@ -18,6 +27,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".CleanupActivity"
+            android:exported="false" />
         <activity
             android:name=".VisionTestActivity"
             android:exported="false"

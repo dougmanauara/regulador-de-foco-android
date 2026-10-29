@@ -55,6 +55,17 @@ class MainActivity : Activity() {
         addFocus(col)
         addProfiles(col)
         addExtras(col)
+        section(col, "Celular mais leve")
+        col.addView(
+            Ui.text(
+                this,
+                "Apps de fábrica dispensáveis, apps parados e ajustes que deixam o celular mais lento.",
+                18f, Ui.MUTED
+            )
+        )
+        col.addView(Ui.button(this, "Verificar o celular") {
+            startActivity(Intent(this, CleanupActivity::class.java))
+        })
         if (problems.isNotEmpty()) col.addView(Ui.text(this, problems.joinToString("\n"), 20f, Ui.WARN))
         col.addView(
             Ui.text(
