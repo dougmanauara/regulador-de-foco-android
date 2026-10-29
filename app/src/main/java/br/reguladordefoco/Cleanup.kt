@@ -82,4 +82,27 @@ object Cleanup {
 
     /** Animações acima de 0,5× só deixam a troca de telas mais lenta. */
     fun animationsSlow(scale: Float): Boolean = scale > 0.5f + 1e-3f
+
+    // ---- Comandos para fazer direto no celular (pelo Shizuku) ----
+    // Cada comando é uma lista de argumentos, sem passar por um interpretador: nada é "colado"
+    // num texto de comando, então um nome de app não tem como virar outro comando.
+
+    private val PKG = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$")
+
+    private fun checkPkg(pkg: String): String {
+        require(PKG.matches(pkg)) { "nome de app inválido: $pkg" }
+        return pkg
+    }
+
+    /** Desativa para o usuário: o app some e para de rodar, mas continua no celular. */
+    fun disableCommand(pkg: String) = listOf("pm", "disable-user", "--user", "0", checkPkg(pkg))
+
+    /** Desfaz o [disableCommand]. */
+    fun enableCommand(pkg: String) = listOf("pm", "enable", "--user", "0", checkPkg(pkg))
+
+    val ANIMATION_KEYS = listOf("window_animation_scale", "transition_animation_scale", "animator_duration_scale")
+    const val FAST_ANIMATION = "0.5"
+    const val NORMAL_ANIMATION = "1.0"
+
+    fun animationCommands(scale: String) = ANIMATION_KEYS.map { listOf("settings", "put", "global", it, scale) }
 }

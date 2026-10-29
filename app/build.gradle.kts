@@ -11,8 +11,8 @@ android {
         applicationId = "br.reguladordefoco"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     buildTypes {
@@ -30,6 +30,9 @@ android {
 }
 
 dependencies {
-    // Só o Android puro: app pequeno e sem bibliotecas extras.
+    // Shizuku: fazer ajustes direto no celular ("Celular mais leve").
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
+
     testImplementation("junit:junit:4.13.2")
 }

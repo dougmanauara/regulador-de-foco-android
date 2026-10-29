@@ -41,11 +41,22 @@ A tela é uma só e os dois olhos veem a mesma imagem. Por isso o ajuste usa o r
 
 ## Celular mais leve
 
-Na tela principal, **Verificar o celular** abre uma checagem do que deixa o celular mais lento. O Android não deixa um app desativar ou desinstalar outro, nem mudar sozinho as configurações de sistema. Por isso o app encontra o problema, explica e abre a tela certa do Android, onde a pessoa só toca em "Desativar" ou "Desinstalar". Desativar dá para desfazer na mesma tela.
+Na tela principal, **Verificar o celular** abre uma checagem do que deixa o celular mais lento.
 
-- **Fluidez**: avisa se a economia de energia está ligada (ela deixa o processador mais lento), se sobra menos de 15% de espaço livre e se as animações estão na velocidade normal. Nesse caso, ensina a passar para 0,5× nas Opções do desenvolvedor. Também lembra da "Suavidade de movimento" em 120 Hz.
+**Fazer direto no celular (com o Shizuku).** Um app comum não pode desativar outro nem mudar as animações do sistema. O [Shizuku](https://play.google.com/store/apps/details?id=moe.shizuku.privileged.api), gratuito, dá ao app a mesma permissão de quem liga o celular num computador pelo cabo, só que pela "Depuração sem fio" do próprio celular. Com ele conectado, os botões agem direto: desativam os apps de fábrica (`pm disable-user`) e põem as animações em 0,5× (`settings put global`). Tudo pode ser desfeito: "Reativar" religa o que o app desativou e "Voltar animações ao normal" volta a 1×. Os comandos vão como lista de argumentos, sem interpretador, e só aceitam nomes de app válidos.
+
+Como ligar o Shizuku (uma vez; depois de reiniciar o celular, só o último passo):
+1. Esteja num Wi-Fi.
+2. Libere as Opções do desenvolvedor: Sobre o telefone → Informações do software → toque 7 vezes em "Número de compilação".
+3. No Shizuku, toque em "Parear" e siga: Opções do desenvolvedor → "Depuração sem fio" → "Parear dispositivo com código"; digite o código na notificação do Shizuku.
+4. No Shizuku, toque em "Iniciar". No Regulador, toque em "Conectar ao Shizuku".
+
+Sem o Shizuku, cada botão abre a tela certa do Android para a pessoa tocar em "Desativar".
+
+O que a checagem mostra:
+- **Fluidez**: economia de energia ligada (ela deixa o processador mais lento), menos de 15% de espaço livre, animações em velocidade normal (vale 0,5×) e a "Suavidade de movimento" em 120 Hz.
 - **Apps de fábrica dispensáveis**: uma lista fechada e conservadora, só com o que é seguro desativar (Bixby, Samsung Free, AR Zone, Samsung TV Plus, os instaladores do Facebook, OneDrive e outros). Fica de fora tudo o que o sistema usa.
-- **Apps parados há 30 dias ou mais**, do maior para o menor. Precisa da permissão "Acesso aos dados de uso", que o app pede.
+- **Apps parados há 30 dias ou mais**, do maior para o menor, com o botão "Desinstalar" (o Android pede confirmação, porque apaga os dados do app). Precisa da permissão "Acesso aos dados de uso".
 
 ## Instalar no celular
 
@@ -62,5 +73,5 @@ Cada push na `main` gera um APK novo automaticamente.
 - `FocusLens.kt`: a lente sobre qualquer app: foto da tela quando ela para, correção e imagem por cima; some ao tocar.
 - `FocusService.kt`: o serviço de acessibilidade que liga a lente e o filtro da noite.
 - `VisionMath.kt`: o teste do "E" (0,4 a 12,6 mm, passos de 0,1 logMAR), o "1 ou 2" e as faixas de foco geral e fino. Testado em `VisionMathTest.kt`.
-- `Cleanup.kt` e `CleanupActivity.kt`: o "Celular mais leve" (regras testadas em `CleanupTest.kt`).
+- `Cleanup.kt` e `CleanupActivity.kt`: o "Celular mais leve" (regras e comandos testados em `CleanupTest.kt`). `ShellAccess.kt`: a conexão com o Shizuku.
 - `VisionTestActivity.kt`: os testes. `MainActivity.kt`: a tela principal. `RegulatorTileService.kt`: o botão rápido.

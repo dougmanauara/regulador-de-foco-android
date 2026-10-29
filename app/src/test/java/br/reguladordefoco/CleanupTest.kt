@@ -79,4 +79,28 @@ class CleanupTest {
         assertFalse(Cleanup.animationsSlow(0.5f))
         assertFalse(Cleanup.animationsSlow(0f))
     }
+
+    @Test
+    fun commandsAreArgumentListsForValidPackagesOnly() {
+        assertEquals(
+            listOf("pm", "disable-user", "--user", "0", "com.samsung.android.arzone"),
+            Cleanup.disableCommand("com.samsung.android.arzone")
+        )
+        assertEquals(listOf("pm", "enable", "--user", "0", "com.facebook.system"), Cleanup.enableCommand("com.facebook.system"))
+        for (bad in listOf("com.x; reboot", "com.x && rm", "nopackage", "", "com.x\nreboot", "-k com.x")) {
+            try {
+                Cleanup.disableCommand(bad)
+                throw AssertionError("aceitou: $bad")
+            } catch (e: IllegalArgumentException) {
+            }
+        }
+        assertTrue(Cleanup.BLOAT.all { runCatching { Cleanup.disableCommand(it.pkg) }.isSuccess })
+    }
+
+    @Test
+    fun animationCommandsSetAllThreeScales() {
+        val cmds = Cleanup.animationCommands(Cleanup.FAST_ANIMATION)
+        assertEquals(3, cmds.size)
+        assertTrue(cmds.all { it.take(3) == listOf("settings", "put", "global") && it.last() == "0.5" })
+    }
 }

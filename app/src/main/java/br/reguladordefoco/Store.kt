@@ -58,6 +58,11 @@ class Store(context: Context) {
         get() = prefs.getBoolean("bigger_text", false)
         set(v) = prefs.edit().putBoolean("bigger_text", v).apply()
 
+    /** Apps que o "Celular mais leve" desativou, para poder desfazer. */
+    var disabledByUs: Set<String>
+        get() = prefs.getStringSet("disabled_by_us", emptySet())!!.toSet()
+        set(v) = prefs.edit().putStringSet("disabled_by_us", v).apply()
+
     /** Força do filtro âmbar do modo Antes de dormir (0 a 1). */
     var nightFilter: Float
         get() = prefs.getFloat(KEY_NIGHT_FILTER, 0.35f)
